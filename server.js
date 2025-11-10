@@ -7,18 +7,15 @@ dotenv.config();
 
 const app = express();
 
+// ✅ Dynamic URLs from updated .env (VITE_ variables)
+const baseUrl = process.env.VITE_BASE_URL || "http://localhost:5000";
+const clientBaseUrl = process.env.VITE_CLIENT_BASE_URL || "http://localhost:5173";
+const websiteUrl = process.env.VITE_WEBSITE_URL || "https://agenticdocextract.featsystems.ai";
 
-
-const baseUrl = process.env.BASE_URL || "http://localhost:5000";
-
-// ✅ CORS
+// ✅ CORS Configuration (Dynamic)
 app.use(
   cors({
-    origin: [
-      process.env.CLIENT_ORIGIN || "http://localhost:5173",
-      "http://localhost:3000",
-      "http://localhost:8080",
-    ],
+    origin: [process.env.VITE_CLIENT_ORIGIN, clientBaseUrl, websiteUrl],
     methods: ["GET", "POST", "OPTIONS"],
     credentials: true,
   })
@@ -26,60 +23,78 @@ app.use(
 
 app.use(express.json());
 
-// ✅ Logger
+// ✅ Request Logging
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
-// ✅ Mail Transport
+// ✅ Zimbra Email Transporter (dynamic + secure)
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: parseInt(process.env.SMTP_PORT) === 465,
+  host: process.env.VITE_SMTP_HOST,
+  port: parseInt(process.env.VITE_SMTP_PORT) || 587,
+  secure: parseInt(process.env.VITE_SMTP_PORT) === 465,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.VITE_EMAIL_USER,
+    pass: process.env.VITE_EMAIL_PASS,
   },
   tls: {
     rejectUnauthorized: false,
   },
 });
 
+// ✅ Verify Email Connection
 transporter.verify((error) => {
-  if (error) console.error("❌ SMTP Config Error:", error.message);
-  else console.log("✅ SMTP Connection Successful");
+  if (error) {
+    console.error("❌ SMTP Configuration Error:", error.message);
+  } else {
+    console.log("📧 SMTP Connection Successful");
+    console.log(`Configured for: ${process.env.VITE_EMAIL_USER}`);
+  }
 });
 
-// ✅ Health check
+// ✅ Health Check Route
 app.get("/test", (req, res) => {
   res.json({
     status: "OK",
     timestamp: new Date().toISOString(),
-    emailConfigured: !!process.env.EMAIL_USER,
+    emailConfigured: !!process.env.VITE_EMAIL_USER,
+    baseUrl,
+    clientBaseUrl,
+    websiteUrl,
   });
 });
 
-// ✅ Send email route
+// ✅ Send Email Route
 app.post("/send-email", async (req, res) => {
-  try {
-    const { firstName, lastName, email, phone, pageUrl, submissionTime } = req.body;
+  console.log("\n📩 Processing email request...");
 
-    if (!firstName || !lastName || !email || !phone) {
-      return res.status(400).json({ success: false, error: "All fields are required" });
-    }
+  const { firstName, lastName, email, phone, pageUrl, submissionTime } = req.body;
 
-    const recipient = process.env.RECIPIENT_EMAIL || process.env.EMAIL_USER;
-    if (!recipient) {
-      console.error("❌ No recipient email defined in .env");
-      return res.status(500).json({ success: false, error: "Recipient email not configured" });
-    }
-
-    const formattedTime = new Date(submissionTime || new Date()).toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
+  if (!firstName || !lastName || !email || !phone) {
+    console.log("⚠️ Validation failed: Missing required fields");
+    return res.status(400).json({
+      success: false,
+      error: "All fields (firstName, lastName, email, phone) are required",
     });
+  }
 
-    const textContent = `New Demo Request
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    console.log("⚠️ Invalid email format");
+    return res.status(400).json({
+      success: false,
+      error: "Invalid email format",
+    });
+  }
+
+  try {
+    const formattedTime = submissionTime
+      ? new Date(submissionTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+      : new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+
+    const textContent = `
+AgenticDocExtract Demo Request
 
 First Name: ${firstName}
 Last Name: ${lastName}
@@ -89,39 +104,55 @@ Page URL: ${pageUrl || "N/A"}
 Submitted At: ${formattedTime}
 `;
 
-    console.log("📨 Sending email to:", recipient);
-
     const info = await transporter.sendMail({
-      from: `"Demo Form" <${process.env.EMAIL_USER}>`,
-      to: recipient,
-      subject: `AgenticDocExtract Demo Request from ${firstName} ${lastName}`,
+      from: `"Demo Form" <${process.env.VITE_EMAIL_USER}>`,
+      to: process.env.VITE_EMAIL_USER,
+      subject: `AgenticDocExtract Demo Request - ${firstName} ${lastName}`,
       text: textContent,
     });
 
-    console.log("✅ Email Sent - ID:", info.messageId);
-    return res.json({ success: true, message: "Email sent successfully" });
-  } catch (err) {
-    console.error("❌ Email send failed:", err.message);
+    console.log("✅ Email sent successfully:", info.messageId);
+
+    return res.json({
+      success: true,
+      messageId: info.messageId,
+      message: "Email sent successfully",
+    });
+  } catch (error) {
+    console.error("❌ Email sending failed:", error.message);
     return res.status(500).json({
       success: false,
-      error: err.message || "Internal Server Error",
+      error: error.message || "Failed to send email",
     });
   }
 });
 
-// ✅ 404 handler
+// ✅ 404 Handler
 app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
+  console.log(`⚠️ 404 Not Found: ${req.method} ${req.path}`);
+  res.status(404).json({
+    error: "Route not found",
+    availableRoutes: ["GET /test", "POST /send-email"],
+  });
+});
+
+// ✅ Global Error Handler
+app.use((err, req, res, next) => {
+  console.error("❌ Server Error:", err);
+  res.status(500).json({
+    success: false,
+    error: "Internal server error",
+    message: err.message,
+  });
 });
 
 // ✅ Start Server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.VITE_PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`
-====================================
-🚀 Server running on port ${PORT}
-🌐 Base URL: ${baseUrl}
-📩 Email endpoint: ${baseUrl}/send-email
-====================================
-`);
+  console.log("\n🚀 Server running...");
+  console.log(`🌐 Base URL: ${baseUrl}`);
+  console.log(`🧪 Test URL: ${baseUrl}/test`);
+  console.log(`📨 Send Email URL: ${baseUrl}/send-email`);
+  console.log(`📧 Email To: ${process.env.VITE_EMAIL_USER}`);
+  console.log("====================================\n");
 });

@@ -1,74 +1,116 @@
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL_LOCAL || 'https://uat.agenticdocextract.featsystems.ai.com:8384';
-
-const htmlContent = `<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AgenticDocExtract | AI-Powered Document Intelligence</title>
-    
-    <!-- Primary Meta Tags -->
-    <meta name="title" content="AgenticDocExtract | AI-Powered Document Intelligence" />
-    <meta name="description" content="Enterprise-grade document extraction with 98% accuracy. Transform archives into LLM-ready data in hours." />
-    <meta name="author" content="Featsystems AI" />
-    <meta name="keywords" content="AI document extraction, document intelligence, LLM data, enterprise AI, document processing" />
+    <meta
+      name="description"
+      content="Enterprise-grade document extraction with 98% accuracy. Transform archives into LLM-ready data in hours."
+    />
+    <meta name="author" content="%VITE_AUTHOR_NAME%" />
+    <meta
+      name="keywords"
+      content="AI document extraction, document intelligence, LLM data, enterprise AI, document processing"
+    />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon_icon" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- ✅ Open Graph / Facebook / LinkedIn -->
+    <meta
+      property="og:title"
+      content="AgenticDocExtract | AI-Powered Document Intelligence"
+    />
+    <meta
+      property="og:description"
+      content="Enterprise-grade document extraction with 98% accuracy. Transform archives into LLM-ready data in hours."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="%VITE_WEBSITE_URL%" />
+    <meta
+      property="og:image"
+      content="%VITE_WEBSITE_URL%/agentic-doc-extract-og.jpg"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta
+      property="og:image:alt"
+      content="AgenticDocExtract - AI Document Intelligence Platform"
+    />
+    <meta property="og:site_name" content="AgenticDocExtract" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- ✅ LinkedIn -->
+    <meta property="article:author" content="%VITE_AUTHOR_NAME%" />
+    <meta property="article:publisher" content="%VITE_AUTHOR_NAME%" />
+
+    <!-- ✅ Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="%VITE_TWITTER_HANDLE%" />
+    <meta name="twitter:creator" content="%VITE_TWITTER_HANDLE%" />
+    <meta
+      name="twitter:title"
+      content="AgenticDocExtract | AI-Powered Document Intelligence"
+    />
+    <meta
+      name="twitter:description"
+      content="Enterprise-grade document extraction with 98% accuracy. Transform archives into LLM-ready data in hours."
+    />
+    <meta
+      name="twitter:image"
+      content="%VITE_WEBSITE_URL%/agentic-doc-extract-og.jpg"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="AgenticDocExtract - AI Document Intelligence Platform"
+    />
+
+    <!-- ✅ Pinterest -->
+    <meta
+      name="pinterest:description"
+      content="Enterprise-grade document extraction with 98% accuracy. Transform archives into LLM-ready data in hours."
+    />
+    <meta
+      name="pinterest:image"
+      content="%VITE_WEBSITE_URL%/agentic-doc-extract-og.jpg"
+    />
+
+    <!-- ✅ Additional SEO -->
+    <link rel="canonical" href="%VITE_WEBSITE_URL%" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#ff825c" />
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="\${baseURL}/favicon_icon" />
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Open Graph (LinkedIn, Facebook) -->
-    <meta property="og:title" content="AgenticDocExtract | AI-Powered Document Intelligence" />
-    <meta property="og:description" content="Enterprise-grade document extraction with 98% accuracy. Transform archives into LLM-ready data in hours." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="\${baseURL}" />
-    <meta property="og:image" content="\${baseURL}/agentic-doc-extract-og.jpg" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="AgenticDocExtract - AI Document Intelligence Platform" />
-    <meta property="og:site_name" content="AgenticDocExtract" />
-    <meta property="og:locale" content="en_US" />
-    <meta property="article:author" content="Featsystems AI" />
-    <meta property="article:publisher" content="https://www.linkedin.com/company/featsystems/" />
-
-    <!-- Twitter Meta -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@featsystems" />
-    <meta name="twitter:creator" content="@featsystems" />
-    <meta name="twitter:title" content="AgenticDocExtract | AI-Powered Document Intelligence" />
-    <meta name="twitter:description" content="Enterprise-grade document extraction with 98% accuracy. Transform archives into LLM-ready data in hours." />
-    <meta name="twitter:image" content="\${baseURL}/agentic-doc-extract-og.jpg" />
-
-    <!-- Canonical -->
-    <link rel="canonical" href="\${baseURL}" />
-
-    <!-- JSON-LD Structured Data -->
+    <!-- ✅ Structured Data / Schema.org -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "AgenticDocExtract",
-      "description": "Enterprise-grade document extraction with 98% accuracy. Transform archives into LLM-ready data in hours.",
-      "url": "\${baseURL}",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "author": {
-        "@type": "Organization",
-        "name": "Featsystems AI",
-        "url": "https://www.linkedin.com/company/featsystems/"
-      },
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "AgenticDocExtract",
+        "description": "Enterprise-grade document extraction with 98% accuracy. Transform archives into LLM-ready data in hours.",
+        "url": "%VITE_WEBSITE_URL%",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "permissions": "browser",
+        "author": {
+          "@type": "Organization",
+          "name": "%VITE_AUTHOR_NAME%"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
       }
-    }
     </script>
   </head>
 
@@ -76,12 +118,4 @@ const htmlContent = `<!doctype html>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
-</html>`;
-
-// Export or Write to File
-module.exports = htmlContent;
-
-const fs = require("fs");
-const path = require("path");
-
-fs.writeFileSync(path.join(__dirname, "index.html"), htmlContent, "utf8");
+</html>
