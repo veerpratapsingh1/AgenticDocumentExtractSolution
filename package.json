@@ -6,11 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:dev": "vite build --mode development",
-    "lint": "eslint .",
-    "preview": "vite preview",
     "server": "node server.js",
-    "server:dev": "nodemon server.js"
+    "server:dev": "nodemon server.js",
+    "generate:html": "node index.html"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

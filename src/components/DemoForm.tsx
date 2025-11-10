@@ -13,236 +13,111 @@ interface DemoFormProps {
 const DemoForm = ({ open, onOpenChange }: DemoFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
     pageUrl: "",
-    submissionTime: ""
+    submissionTime: "",
   });
+  const [errors, setErrors] = useState({ phone: "" });
 
-  const [errors, setErrors] = useState({
-    phone: ""
-  });
+  const baseUrl = import.meta.env.VITE_BASE_API_URL || "http://localhost:5000";
 
   useEffect(() => {
     if (open) {
-      const currentPageUrl = window.location.href;
-      const currentDateTime = new Date().toISOString();
-
       setFormData(prev => ({
         ...prev,
-        pageUrl: currentPageUrl,
-        submissionTime: currentDateTime
+        pageUrl: window.location.href,
+        submissionTime: new Date().toISOString(),
       }));
     }
   }, [open]);
 
-  // ✅ Corrected Phone Validation
   const validatePhone = (phone: string) => {
-    const cleanPhone = phone.replace(/\D/g, "");
-
-    if (cleanPhone.length === 0) {
-      return "Phone number is required";
-    } 
-    else if (cleanPhone.length < 10) {
-      return "Phone number must be at least 10 digits";
-    }
-    else if (!/^[6-9]\d{9,}$/.test(cleanPhone)) {
-      return "Please enter a valid phone number (starting with 6-9)";
-    }
-
+    const clean = phone.replace(/\D/g, "");
+    if (clean.length < 10) return "Phone must be at least 10 digits";
+    if (!/^[6-9]\d{9,}$/.test(clean)) return "Invalid phone number";
     return "";
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const formattedValue = value.replace(/\D/g, "");
-
-    setFormData({ ...formData, phone: formattedValue });
-    const error = validatePhone(formattedValue);
-    setErrors({ ...errors, phone: error });
+  const handlePhoneChange = (e: any) => {
+    const val = e.target.value.replace(/\D/g, "");
+    setFormData({ ...formData, phone: val });
+    setErrors({ phone: validatePhone(val) });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
-
-    const phoneError = validatePhone(formData.phone);
-
-    if (phoneError) {
-      setErrors({ ...errors, phone: phoneError });
-      toast({
-        title: "Validation Error",
-        description: phoneError,
-        variant: "destructive",
-      });
+    const phoneErr = validatePhone(formData.phone);
+    if (phoneErr) {
+      setErrors({ phone: phoneErr });
+      toast({ title: "Error", description: phoneErr, variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
-
-    const finalFormData = {
-      ...formData,
-      submissionTime: new Date().toISOString()
-    };
-
-    console.log("📤 Sending form data:", finalFormData);
-
     try {
-      console.log("🔗 Connecting to: http://localhost:5000/send-email");
-
-      const response = await fetch("http://localhost:5000/send-email", {
+      const res = await fetch(`${baseUrl}/send-email`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(finalFormData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
-
-      const result = await response.json();
-      console.log("📦 Backend response:", result);
+      const result = await res.json();
 
       if (result.success) {
-        toast({
-          title: "✅ Success!",
-          description: "Your demo request has been sent successfully.",
-        });
-
+        toast({ title: "Success", description: "Email sent successfully!" });
         onOpenChange(false);
-
-        setFormData({
-          firstName: "",
-          lastName: "",
-          email: "",
-          phone: "",
-          pageUrl: "",
-          submissionTime: ""
-        });
-
-        setErrors({ phone: "" });
+        setFormData({ firstName: "", lastName: "", email: "", phone: "", pageUrl: "", submissionTime: "" });
       } else {
-        toast({
-          title: "❌ Failed",
-          description: result.error || "Something went wrong.",
-          variant: "destructive",
-        });
+        toast({ title: "Failed", description: result.error || "Error occurred", variant: "destructive" });
       }
-    } catch (error) {
-      console.error("❌ Complete error object:", error);
-      toast({
-        title: "❌ Connection Error",
-        description: "Could not connect to server. Check console for details.",
-        variant: "destructive",
-      });
+    } catch (err) {
+      toast({ title: "Server Error", description: "Failed to connect to server", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // ✅ Updated submit button disabling logic
-  const isSubmitDisabled = () => {
-    return (
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.email ||
-      formData.phone.length < 10 ||
-      errors.phone !== "" ||
-      isSubmitting
-    );
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Book Demo</DialogTitle>
-          <DialogDescription className="text-base">
-            Fill in your details below to request a demo.
-          </DialogDescription>
+          <DialogTitle>Book Demo</DialogTitle>
+          <DialogDescription>Fill your details below</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label htmlFor="firstName">First Name *</Label>
-            <Input
-              id="firstName"
-              required
-              value={formData.firstName}
-              onChange={(e) =>
-                setFormData({ ...formData, firstName: e.target.value })
-              }
-              placeholder="Enter your first name"
-              disabled={isSubmitting}
-            />
-          </div>
+          {["firstName", "lastName", "email"].map(field => (
+            <div className="space-y-2" key={field}>
+              <Label htmlFor={field}>{field.replace(/^\w/, c => c.toUpperCase())} *</Label>
+              <Input
+                id={field}
+                required
+                value={(formData as any)[field]}
+                onChange={e => setFormData({ ...formData, [field]: e.target.value })}
+                placeholder={`Enter your ${field}`}
+                disabled={isSubmitting}
+              />
+            </div>
+          ))}
 
           <div className="space-y-2">
-            <Label htmlFor="lastName">Last Name *</Label>
-            <Input
-              id="lastName"
-              required
-              value={formData.lastName}
-              onChange={(e) =>
-                setFormData({ ...formData, lastName: e.target.value })
-              }
-              placeholder="Enter your last name"
-              disabled={isSubmitting}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              placeholder="Enter your email"
-              disabled={isSubmitting}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number *</Label>
+            <Label htmlFor="phone">Phone *</Label>
             <Input
               id="phone"
               type="tel"
               required
               value={formData.phone}
               onChange={handlePhoneChange}
-              placeholder="Enter phone number"
               className={errors.phone ? "border-red-500" : ""}
               disabled={isSubmitting}
             />
-
-            {errors.phone && (
-              <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-            )}
-
-            <p className="text-xs text-gray-500 mt-1">
-              {formData.phone.length} digits
-              {!errors.phone && formData.phone.length >= 10 && (
-                <span className="text-green-600 ml-2">✓ Valid</span>
-              )}
-            </p>
+            {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
           </div>
 
-          <div style={{ display: 'none' }}>
-            <Input id="pageUrl" value={formData.pageUrl} readOnly />
-            <Input id="submissionTime" value={formData.submissionTime} readOnly />
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full"
-            size="lg"
-            disabled={isSubmitDisabled()}
-          >
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Sending..." : "Submit"}
           </Button>
         </form>

@@ -7,13 +7,17 @@ dotenv.config();
 
 const app = express();
 
-// CORS Configuration
+
+
+const baseUrl = process.env.BASE_URL || "http://localhost:5000";
+
+// ✅ CORS
 app.use(
   cors({
     origin: [
-      process.env.CLIENT_ORIGIN || "http://localhost:8080",
+      process.env.CLIENT_ORIGIN || "http://localhost:5173",
       "http://localhost:3000",
-      "http://localhost:5173",
+      "http://localhost:8080",
     ],
     methods: ["GET", "POST", "OPTIONS"],
     credentials: true,
@@ -22,13 +26,13 @@ app.use(
 
 app.use(express.json());
 
-// Request Logging
+// ✅ Logger
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
 
-// Zimbra Email Transporter
+// ✅ Mail Transport
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT) || 587,
@@ -40,22 +44,14 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
 });
 
-// Verify Email Configuration
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("SMTP Configuration Error:", error.message);
-  } else {
-    console.log("SMTP Connection Successful");
-    console.log(`Email configured for: ${process.env.EMAIL_USER}`);
-  }
+transporter.verify((error) => {
+  if (error) console.error("❌ SMTP Config Error:", error.message);
+  else console.log("✅ SMTP Connection Successful");
 });
 
-// Health Check Route
+// ✅ Health check
 app.get("/test", (req, res) => {
   res.json({
     status: "OK",
@@ -64,56 +60,26 @@ app.get("/test", (req, res) => {
   });
 });
 
-// Send Email Route - Plain Text Only
+// ✅ Send email route
 app.post("/send-email", async (req, res) => {
-  console.log("\nProcessing email request...");
-
-  const { firstName, lastName, email, phone, pageUrl, submissionTime } =
-    req.body;
-
-  // Validation
-  if (!firstName || !lastName || !email || !phone) {
-    console.log("Validation failed: Missing required fields");
-    return res.status(400).json({
-      success: false,
-      error: "All fields (firstName, lastName, email, phone) are required",
-    });
-  }
-
-  // Email format validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    console.log("Validation failed: Invalid email format");
-    return res.status(400).json({
-      success: false,
-      error: "Invalid email format",
-    });
-  }
-
   try {
-    // Format submission time for IST
-    const formattedTime = submissionTime
-      ? new Date(submissionTime).toLocaleString("en-IN", {
-          timeZone: "Asia/Kolkata",
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        })
-      : new Date().toLocaleString("en-IN", {
-          timeZone: "Asia/Kolkata",
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        });
+    const { firstName, lastName, email, phone, pageUrl, submissionTime } = req.body;
 
-    // Simple Plain Text Email Content
-    const textContent = `AgenticDocExtract Demo Request
+    if (!firstName || !lastName || !email || !phone) {
+      return res.status(400).json({ success: false, error: "All fields are required" });
+    }
+
+    const recipient = process.env.RECIPIENT_EMAIL || process.env.EMAIL_USER;
+    if (!recipient) {
+      console.error("❌ No recipient email defined in .env");
+      return res.status(500).json({ success: false, error: "Recipient email not configured" });
+    }
+
+    const formattedTime = new Date(submissionTime || new Date()).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+    });
+
+    const textContent = `New Demo Request
 
 First Name: ${firstName}
 Last Name: ${lastName}
@@ -123,62 +89,39 @@ Page URL: ${pageUrl || "N/A"}
 Submitted At: ${formattedTime}
 `;
 
-    console.log("Sending email to:", process.env.EMAIL_USER);
+    console.log("📨 Sending email to:", recipient);
 
     const info = await transporter.sendMail({
       from: `"Demo Form" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_USER,
+      to: recipient,
       subject: `AgenticDocExtract Demo Request from ${firstName} ${lastName}`,
       text: textContent,
     });
 
-    console.log("Email sent successfully!");
-    console.log("Message ID:", info.messageId);
-
-    return res.json({
-      success: true,
-      messageId: info.messageId,
-      message: "Email sent successfully",
-    });
-  } catch (error) {
-    console.error("Email sending failed:");
-    console.error("Error message:", error.message);
-    console.error("Error code:", error.code);
-
+    console.log("✅ Email Sent - ID:", info.messageId);
+    return res.json({ success: true, message: "Email sent successfully" });
+  } catch (err) {
+    console.error("❌ Email send failed:", err.message);
     return res.status(500).json({
       success: false,
-      error: error.message || "Failed to send email",
-      errorCode: error.code,
+      error: err.message || "Internal Server Error",
     });
   }
 });
 
-// 404 Handler
+// ✅ 404 handler
 app.use((req, res) => {
-  console.log(`404 - Route not found: ${req.method} ${req.path}`);
-  res.status(404).json({
-    error: "Route not found",
-    availableRoutes: ["GET /test", "POST /send-email"],
-  });
+  res.status(404).json({ error: "Route not found" });
 });
 
-// Error Handler
-app.use((err, req, res, next) => {
-  console.error("Server error:", err);
-  res.status(500).json({
-    success: false,
-    error: "Internal server error",
-    message: err.message,
-  });
-});
-
-// Start Server
+// ✅ Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log("\n====================================");
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Test URL: http://localhost:${PORT}/test`);
-  console.log(`Email endpoint: http://localhost:${PORT}/send-email`);
-  console.log(`Emails will be sent to: ${process.env.EMAIL_USER}`);
-  console.log("====================================\n");
+  console.log(`
+====================================
+🚀 Server running on port ${PORT}
+🌐 Base URL: ${baseUrl}
+📩 Email endpoint: ${baseUrl}/send-email
+====================================
+`);
 });
