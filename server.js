@@ -7,10 +7,10 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Allow CORS for your frontend domain
+// ✅ Allow your frontend domain (Netlify)
 app.use(
   cors({
-    origin: ["https://agenticdoc.netlify.app", "http://localhost:5173"], // allowed origins
+    origin: ["https://agenticdoc.netlify.app", "http://localhost:5173"],
     methods: ["GET", "POST"],
     credentials: true,
   })
@@ -18,17 +18,17 @@ app.use(
 
 app.use(express.json());
 
-// ✅ Test route
+// ✅ Root route for Render check
 app.get("/", (req, res) => {
-  res.send("Backend is running successfully ✅");
+  res.send("✅ Agentic Backend is running successfully on Render!");
 });
 
-// ✅ Email sending route
+// ✅ Email sending API
 app.post("/send-email", async (req, res) => {
   try {
     const { firstName, lastName, email, phone, pageUrl, submissionTime } = req.body;
 
-    if (!email || !firstName || !lastName || !phone) {
+    if (!firstName || !lastName || !email || !phone) {
       return res.status(400).json({ success: false, error: "Missing required fields" });
     }
 
@@ -42,27 +42,26 @@ app.post("/send-email", async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: "veer.pratapsingh@featsystems.com",
-      subject: "📩 New Demo Request",
+      to: "veer.pratapsingh@featsystems.com", // 🔧 Change to your receiving email
+      subject: "New Demo Request from Agentic Website",
       text: `
-        Name: ${firstName} ${lastName}
-        Email: ${email}
-        Phone: ${phone}
-        Page: ${pageUrl}
-        Time: ${submissionTime}
+      Name: ${firstName} ${lastName}
+      Email: ${email}
+      Phone: ${phone}
+      Page URL: ${pageUrl}
+      Submission Time: ${submissionTime}
       `,
     };
 
     await transporter.sendMail(mailOptions);
 
-    console.log("✅ Email sent successfully!");
-    res.status(200).json({ success: true, message: "Email sent successfully!" });
-  } catch (err) {
-    console.error("❌ Error:", err);
+    res.status(200).json({ success: true, message: "✅ Email sent successfully" });
+  } catch (error) {
+    console.error("❌ Error sending email:", error);
     res.status(500).json({ success: false, error: "Failed to send email" });
   }
 });
 
-// ✅ For Render dynamic port
+// ✅ Dynamic PORT for Render
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
