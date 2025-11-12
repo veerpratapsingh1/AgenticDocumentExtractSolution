@@ -2,49 +2,34 @@ import express from "express";
 import cors from "cors";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// ✅ Load .env.local file
-dotenv.config({ path: path.join(__dirname, ".env.local") });
+dotenv.config();
 
 const app = express();
 
-// ✅ Environment variables
+// ✅ Dynamic URLs from updated .env (VITE_ variables)
 const baseUrl = process.env.VITE_BASE_URL || "http://localhost:5000";
 const clientBaseUrl = process.env.VITE_CLIENT_BASE_URL || "http://localhost:5173";
 const websiteUrl = process.env.VITE_WEBSITE_URL || "https://agenticdocextract.featsystems.ai";
-const clientOrigin = process.env.VITE_CLIENT_ORIGIN || "http://localhost:8080";
 
-// ✅ Allow both local and UAT origins
+// ✅ CORS Configuration (Dynamic)
 app.use(
   cors({
-    origin: [
-      clientBaseUrl,
-      clientOrigin,
-      websiteUrl,
-      "http://192.168.1.137:8011", // ✅ UAT URL
-      "http://localhost:5173",     // ✅ Local frontend
-      "http://localhost:8080",     // ✅ Another dev port
-    ],
+    origin: [process.env.VITE_CLIENT_ORIGIN, clientBaseUrl, websiteUrl],
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
 
 app.use(express.json());
 
-// ✅ Log all incoming requests
+// ✅ Request Logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
-// ✅ Configure mail transporter
+// ✅ Zimbra Email Transporter (dynamic + secure)
 const transporter = nodemailer.createTransport({
   host: process.env.VITE_SMTP_HOST,
   port: parseInt(process.env.VITE_SMTP_PORT) || 587,
@@ -58,7 +43,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ✅ Verify SMTP connection
+// ✅ Verify Email Connection
 transporter.verify((error) => {
   if (error) {
     console.error("❌ SMTP Configuration Error:", error.message);
@@ -68,7 +53,7 @@ transporter.verify((error) => {
   }
 });
 
-// ✅ Test route
+// ✅ Health Check Route
 app.get("/test", (req, res) => {
   res.json({
     status: "OK",
@@ -80,13 +65,14 @@ app.get("/test", (req, res) => {
   });
 });
 
-// ✅ Send email endpoint
+// ✅ Send Email Route
 app.post("/send-email", async (req, res) => {
   console.log("\n📩 Processing email request...");
 
   const { firstName, lastName, email, phone, pageUrl, submissionTime } = req.body;
 
   if (!firstName || !lastName || !email || !phone) {
+    console.log("⚠️ Validation failed: Missing required fields");
     return res.status(400).json({
       success: false,
       error: "All fields (firstName, lastName, email, phone) are required",
@@ -95,6 +81,7 @@ app.post("/send-email", async (req, res) => {
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
+    console.log("⚠️ Invalid email format");
     return res.status(400).json({
       success: false,
       error: "Invalid email format",
@@ -140,15 +127,16 @@ Submitted At: ${formattedTime}
   }
 });
 
-// ✅ Handle 404
+// ✅ 404 Handler
 app.use((req, res) => {
+  console.log(`⚠️ 404 Not Found: ${req.method} ${req.path}`);
   res.status(404).json({
     error: "Route not found",
     availableRoutes: ["GET /test", "POST /send-email"],
   });
 });
 
-// ✅ Global error handler
+// ✅ Global Error Handler
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err);
   res.status(500).json({
@@ -158,7 +146,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ✅ Start the server
+// ✅ Start Server
 const PORT = process.env.VITE_PORT || 5000;
 app.listen(PORT, () => {
   console.log("\n🚀 Server running...");
