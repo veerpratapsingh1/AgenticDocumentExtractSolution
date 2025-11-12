@@ -4,10 +4,10 @@ import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
 dotenv.config();
-
 const app = express();
 
-// ✅ Allow your frontend domain (Netlify)
+// ✅ Middleware
+app.use(express.json());
 app.use(
   cors({
     origin: ["https://agenticdoc.netlify.app", "http://localhost:5173"],
@@ -16,14 +16,12 @@ app.use(
   })
 );
 
-app.use(express.json());
-
-// ✅ Root route for Render check
+// ✅ Root Route (for testing)
 app.get("/", (req, res) => {
-  res.send("✅ Agentic Backend is running successfully on Render!");
+  res.status(200).send("✅ Agentic Backend is running successfully on Render!");
 });
 
-// ✅ Email sending API
+// ✅ Email API Route
 app.post("/send-email", async (req, res) => {
   try {
     const { firstName, lastName, email, phone, pageUrl, submissionTime } = req.body;
@@ -42,26 +40,26 @@ app.post("/send-email", async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: "veer.pratapsingh@featsystems.com", // 🔧 Change to your receiving email
-      subject: "New Demo Request from Agentic Website",
+      to: "veer.pratapsingh@featsystems.com", // 👈 change to your email
+      subject: "New Demo Request",
       text: `
       Name: ${firstName} ${lastName}
       Email: ${email}
       Phone: ${phone}
       Page URL: ${pageUrl}
-      Submission Time: ${submissionTime}
+      Submitted At: ${submissionTime}
       `,
     };
 
     await transporter.sendMail(mailOptions);
-
-    res.status(200).json({ success: true, message: "✅ Email sent successfully" });
-  } catch (error) {
-    console.error("❌ Error sending email:", error);
+    console.log("✅ Email sent successfully!");
+    res.status(200).json({ success: true, message: "Email sent successfully" });
+  } catch (err) {
+    console.error("❌ Error sending email:", err);
     res.status(500).json({ success: false, error: "Failed to send email" });
   }
 });
 
-// ✅ Dynamic PORT for Render
+// ✅ Dynamic Port (Render uses random port)
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
